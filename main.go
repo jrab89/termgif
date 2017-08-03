@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"image"
 	"image/color"
 	"image/gif"
 	"io/ioutil"
@@ -34,16 +35,16 @@ func ColorToAttribute(c color.Color) termbox.Attribute {
 	return termbox.Attribute(16 + 36*rLerped + 6*gLerped + bLerped + 1)
 }
 
-func draw(g *gif.GIF) {
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+func drawImage(i image.Image) {
+	size := i.Bounds().Size()
 
-	for y := 0; y < g.Config.Height; y++ {
-		for x := 0; x < g.Config.Width; x++ {
-			gifPixelColor := g.Image[0].At(x, y)
-			termbox.SetCell(x, y, ' ', termbox.ColorDefault, ColorToAttribute(gifPixelColor))
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+	for y := 0; y < size.Y; y++ {
+		for x := 0; x < size.X; x++ {
+			pixelColor := i.At(x, y)
+			termbox.SetCell(x, y, ' ', termbox.ColorDefault, ColorToAttribute(pixelColor))
 		}
 	}
-
 	termbox.Flush()
 }
 
@@ -62,6 +63,34 @@ func openGif(path string) (*gif.GIF, error) {
 	return decodedGif, nil
 }
 
+func loop(g *gif.GIF) {
+	events := make(chan termbox.Event)
+	go func() {
+		for {
+			events <- termbox.PollEvent()
+		}
+	}()
+
+	currentImageIndex := 0
+
+	for {
+		select {
+		case e := <-events:
+			if e.Type == termbox.EventKey && (e.Key == termbox.KeyEsc || e.Key == termbox.KeyCtrlC) {
+				return
+			}
+		default:
+			drawImage(g.Image[currentImageIndex])
+			time.Sleep(10 * time.Duration(g.Delay[currentImageIndex]) * time.Millisecond)
+
+			currentImageIndex++
+			if currentImageIndex >= len(g.Image) {
+				currentImageIndex = 0
+			}
+		}
+	}
+}
+
 func main() {
 	gifPath := os.Args[1]
 	inputGif, err := openGif(gifPath)
@@ -76,25 +105,4 @@ func main() {
 	defer termbox.Close()
 	termbox.SetOutputMode(termbox.Output256)
 	loop(inputGif)
-}
-
-func loop(g *gif.GIF) {
-	events := make(chan termbox.Event)
-	go func() {
-		for {
-			events <- termbox.PollEvent()
-		}
-	}()
-
-	for {
-		select {
-		case e := <-events:
-			if e.Type == termbox.EventKey && (e.Key == termbox.KeyEsc || e.Key == termbox.KeyCtrlC) {
-				return
-			}
-		default:
-			draw(g)
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
 }
