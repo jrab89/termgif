@@ -75,9 +75,26 @@ func main() {
 	}
 	defer termbox.Close()
 	termbox.SetOutputMode(termbox.Output256)
+	loop(inputGif)
+}
+
+func loop(g *gif.GIF) {
+	events := make(chan termbox.Event)
+	go func() {
+		for {
+			events <- termbox.PollEvent()
+		}
+	}()
 
 	for {
-		draw(inputGif)
-		time.Sleep(5 * time.Second)
+		select {
+		case e := <-events:
+			if e.Type == termbox.EventKey && (e.Key == termbox.KeyEsc || e.Key == termbox.KeyCtrlC) {
+				return
+			}
+		default:
+			draw(g)
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 }
