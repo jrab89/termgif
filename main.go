@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/nsf/termbox-go"
@@ -48,12 +51,38 @@ func drawImage(i image.Image) {
 	termbox.Flush()
 }
 
-func openGif(path string) (*gif.GIF, error) {
+func openGifFile(path string) (*gif.GIF, error) {
 	gifBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	gifReader := bytes.NewReader(gifBytes)
+
+	decodedGif, err := gif.DecodeAll(gifReader)
+	if err != nil {
+		return nil, err
+	}
+
+	return decodedGif, nil
+}
+
+func openGifURL(url string) (*gif.GIF, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Got HTTP %v for %v", resp.StatusCode, url)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	gifReader := bytes.NewReader(body)
 
 	decodedGif, err := gif.DecodeAll(gifReader)
 	if err != nil {
@@ -92,10 +121,20 @@ func loop(g *gif.GIF) {
 }
 
 func main() {
+	var inputGif *gif.GIF
+	var err error
+
 	gifPath := os.Args[1]
-	inputGif, err := openGif(gifPath)
-	if err != nil {
-		log.Fatal(err)
+	if strings.HasPrefix(gifPath, "https://") || strings.HasPrefix(gifPath, "http://") {
+		inputGif, err = openGifURL(gifPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		inputGif, err = openGifFile(gifPath)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	err = termbox.Init()
