@@ -11,7 +11,7 @@ why go?
 - quick and easy to build and deploy self contained binaries
 - Docker, k8s, Hashicorp
 
-termgox-go
+termbox-go
 ----------
 * library for creating cross-platform text-based interfaces, like `ncurses`
   - http://ctop.sh
