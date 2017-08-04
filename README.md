@@ -10,9 +10,9 @@ Installation
 
 ```
 $ go get -u github.com/jrab89/termgif
-# $GOPATH/bin needs to be in your $PATH
-$ export PATH="$GOPATH/bin:$PATH"
 ```
+
+(Make sure your `$GOPATH` is in your `$PATH`)
 
 Usage
 -----
